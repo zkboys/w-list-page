@@ -3,6 +3,8 @@
     var gulp = require('gulp'),
         rename = require('gulp-rename'),
         uglify = require('gulp-uglify'),
+        connect = require('gulp-connect'),
+        open = require('gulp-open'),
         del = require('del'),
         paths = {
             root: './',//当前路径
@@ -45,7 +47,19 @@
         var fileName = filePath.substr(filePath.lastIndexOf('/') + 1);
         console.log('File ' + fileName + ' was ' + event.type + ', running tasks...');
     }
+    gulp.task('connect', function () {
+        return connect.server({
+            root: [__dirname],
+            livereload: true,
+            port: '3000'
+        });
+    });
 
+    gulp.task('open', function () {
+        return gulp.src('./demo.html').pipe(open({uri: 'http://localhost:3000/demo.html'}));
+    });
+
+    gulp.task('server', ['watch', 'connect', 'open']);
     gulp.task('clean', function (cb) {
         del([
             paths.dist.root + '/**/*'
