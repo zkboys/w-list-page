@@ -51,14 +51,15 @@
         this.options.prevCount = this.options.prevCount < 0 ? 2 : this.options.prevCount;
         this.options.nextCount = this.options.nextCount < 0 ? 6 : this.options.nextCount;
 
-    }
+    };
     //定义插件的方法
     plugInObj.prototype = {
         init: function () {
             var _this = this;
             var options = _this.options;
             var $element = _this.$element;
-
+            options.totalPage = parseInt(options.totalPage);
+            if (options.totalPage < 2) return $element;
             $element.html('<ul class="pagination" style="margin:0px;"><li title="上一页" class="page-prev page-pn" ><a href="javascript:;" >&lt;</a></li><li title="下一页" class="page-next page-pn"><a href="javascript:;">&gt;</a></li></ul>');
             _this.setNumList();
             //　前一页事件绑定 支持鼠标按住，快速切换页码，鼠标抬起时执行一次回调

@@ -30,13 +30,6 @@
                 <input id="name" type="text" name="name" class="form-control" placeholder="活动名称">
             </div>
         </div>
-        <!--如果不存在，或者value=0则上一页按钮不可用-->
-        <input name="pre_cursor" type="hidden" value=""/>
-        <!--如果不存在，或者value=0则下一页按钮不可用-->
-        <input name="next_cursor" type="hidden" value=""/>
-        <!--用于通知后台，点击的是上一页按钮，还是下一页按奶牛，还是查询按钮。next/pre/search-->
-        <input name="mark" type="hidden" value="next"/>
-
         <div id="submit" class="btn btn-primary">查询</div>
     </form>
 </div>
@@ -58,24 +51,35 @@
 <script src="dist/w-modal/dist/js/w-modal.min.js"></script>
 <script src="dist/js/w-list-page.min.js"></script>
 <script>
+    /*
+     关于后台交互：
+     下一页时，只传给后台next_cursor参数
+     上一页时，只传给后台prev_cursor参数
+     查询时，不会给后台传prev_cursor和next_cursor
+     后台可以根据是否获取到了prev_cursor或者next_cursor来判断请求类型。
+
+     后台返回数据：
+     prev_cursor
+     next_cursor
+     table_data
+     * */
     var columns = [//列配置信息
         {
             name: '姓名',
             field: 'name',
-            width: 50,
+            width: 100,
             align: "left"
         },
         {
             name: "年龄",
             field: "age",
-            width: 50,
+            width: 100,
             align: "center"
         },
         {
             name: "职位",
             field: "position",
-            width: 60,
-            align: "center",
+            align: "left",
             valueFilter: function (value, rowData, tableData) {
                 return value;
             }
@@ -83,14 +87,51 @@
         {
             name: "入职时间",
             field: "enter",
-            width: '100',
+            width: '120px',
             align: "center",
             valueFilter: function (value, rowData, tableData) {
                 return value + '年';
             }
         }
     ];
-    var tableData = createTableData();
+    var operation = function (rowData, tableData) {
+        //操作列内容，返回往操作列插入的内容
+        var operations = [];
+        operations.push('<button class="btn btn-info btn-xs detail">详情</button>');
+        operations.push('<button class="btn btn-danger btn-xs delete">删除</button>');
+        return operations.join('&nbsp;');
+    };
+    var wt = listPage({
+        url: './test-data.json',
+        showCheckbox: true,//默认true
+        showRowIndex: false,//是否显示行号 默认false
+        //rowIndexStart: 1,//行号开始值 默认1
+        operationWidth: 130,
+        primaryKey: 'id',
+        operation: operation,
+        columns: columns,
+        data: {//表格相关的数据，包含当前页数据 分页信息。
+            prevCursor: "",
+            nextCursor: "",
+            //pageSize:10, // 每页显示数据量 默认10
+            //currentPage: 1,
+            tableData: createTableData()
+        }
+    });
+
+    $(document).on('click', '.btn.delete', function () {
+        //行内按钮绑定事件，由于可能会用ajax重新载入数据，这里要使用事件委托
+        var $this = $(this);
+        var $row = $this.parents('tr');
+        var rowData = $row.data('rowData');
+        console.log(rowData);
+        wt.wTable('deleteRow', $row);
+    });
+    $(document).on('click', '.btn.detail', function () {
+        var $this = $(this);
+        var rowData = $this.parents('tr').data('rowData');
+        console.log(rowData);
+    });
     function createTableData(index) {
         //构造测试数据
         index = index || 0;
@@ -107,42 +148,6 @@
         }
         return tableData;
     }
-    var operation = function (rowData, tableData) {
-        //操作列内容，返回往操作列插入的内容
-        var operations = [];
-        operations.push('<button class="btn btn-info btn-xs detail">详情</button>');
-        operations.push('<button class="btn btn-danger btn-xs delete">删除</button>');
-        return operations.join('&nbsp;');
-    };
-    $(document).on('click', '.btn.delete', function () {
-        //行内按钮绑定事件，由于可能会用ajax重新载入数据，这里要使用事件委托
-        var $this = $(this);
-        var $row = $this.parents('tr');
-        var rowData = $row.data('rowData');
-        console.log(rowData);
-        wt.wTable('deleteRow', $row);
-    });
-    $(document).on('click', '.btn.detail', function () {
-        var $this = $(this);
-        var rowData = $this.parents('tr').data('rowData');
-        console.log(rowData);
-    });
-
-
-    var wt = listPage({
-        url: './test-data.json',
-        paginationType: 'simple',// simple complex none
-        //totalPage: 100, // 隐藏到页面上
-        showCheckbox: true,//默认true
-        showRowIndex: false,//是否显示行号 默认false
-        //rowIndexStart: 1,//行号开始值 默认1
-        //pageSize:10, // 每页显示数据量 默认10
-        operationWidth: 130,
-        primaryKey: 'id',
-        operation: operation,
-        columns: columns,
-        tableData: tableData
-    });
 </script>
 </body>
 </html>

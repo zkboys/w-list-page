@@ -4,9 +4,20 @@ function listPage(options) {
         paginationType: 'complex', // complex  simple
         url: '',
         tableWrap: '.table-wrap',
-        ajaxDataField: 'table_data',
-        totalPage:$('input[name=total_page]').val(),
-        pageSize: 10
+        ajaxDataField: 'table_data'
+    };
+    var simpleDataDefaults = {
+        prevCursor: 0,
+        nextCursor: 0,
+        currentPage: 1,
+        pageSize: 10,
+        tableData: []
+    };
+    var complexDataDefaults = {
+        currentPage: 1,
+        totalPage: 0,
+        pageSize: 10,
+        tableData: []
     };
     /*
      showCheckbox: true,//是否显示checkbox列 默认true
@@ -31,43 +42,51 @@ function listPage(options) {
     var $searchForm = $('.search-bar form');
     var $toolBarBottom = $('.tool-bar-bottom');
     // 初始化分页
-    $searchForm.append('<input type="hidden" name ="current_page" value = "1"/>');
+    if ('prevCursor' in options.data || 'nextCursor' in options.data) {
+        options.paginationType = 'simple';
+        options.data = $.extend({}, simpleDataDefaults, options.data);
+    } else {
+        options.paginationType = 'complex';
+        options.data = $.extend({}, complexDataDefaults, options.data);
+    }
+    //两中分页方式都会用到current_page
+    $searchForm.append('<input type="hidden" name ="current_page" value = "' + options.data.currentPage + '"/>');
     if (options.paginationType == 'complex') {
-        $toolBarBottom.append('<div class="clear"></div>')
+        $toolBarBottom.append('<div class="clear"></div>');
         var $paginationContainer = $('<div class="pull-left"></div>');
         $toolBarBottom.prepend($paginationContainer);
+        options.totalPage = options.data.totalPage;
+        options.currentPage = options.data.currentPage;
         options.clickCallBack = function (pageNum, $element) {
             $searchForm.find('input[name=current_page]').val(pageNum);
-            loadDataByAjax.call($element, {
-                beforeSend: function (XMLHttpRequest) {
-
-                },
-                success: function (data, textStatus) {
-
-                },
-                complete: function (XMLHttpRequest, textStatus) {
-
-                }
-            });
+            loadDataByAjax.call($element);
         };
         $paginationContainer.wPage(options);
     } else if (options.paginationType == 'simple') {
-        var $preCursor = $('input[name=pre_cursor]');
-        var $nextCursor = $('input[name=next_cursor]');
-        var preDisabled = $preCursor.val() == 0 ? 'disabled' : '';
-        var nextDisabled = $nextCursor.val() == 0 ? 'disabled' : '';
-        var $preBtn = $('<div class="btn btn-default btn-ms pre ' + preDisabled + '">上一页</div>');
+        var prevDisabled = options.data.prevCursor ? '' : 'disabled';
+        var nextDisabled = options.data.nextCursor ? '' : 'disabled';
+        var $prevBtn = $('<div class="btn btn-default btn-ms pre ' + prevDisabled + '">上一页</div>');
         var $nextBtn = $('<div class="btn btn-default btn-ms next ' + nextDisabled + '">下一页</div>');
         $toolBarBottom.prepend($nextBtn);
-        $toolBarBottom.prepend($preBtn);
-        $preBtn.on('click', function () {
-            if ($(this).hasClass('disabled')) return false;
-            $('input[name=mark]').val('pre');
+        $toolBarBottom.prepend($prevBtn);
+        $prevBtn.on('click', function () {
+            // 点击上一页，只向后台发送pre_cursor数据，不发送next_cursor数据。
+            $searchForm.find('input[name=next_cursor]').remove();
+            var $prevCursor = $searchForm.find('input[name=prev_cursor]');
+            if (!$prevCursor.length) {
+                $prevCursor = $('<input type="hidden" name="prev_cursor" value="' + options.data.prevCursor + '"/>');
+                $searchForm.append($prevCursor);
+            }
             loadDataByAjax.call(this);
         });
         $nextBtn.on('click', function () {
-            if ($(this).hasClass('disabled')) return false;
-            $('input[name=mark]').val('next');
+            // 点击下一页，只向后台发送next_cursor数据，不发送pre_cursor数据。
+            $searchForm.find('input[name=prev_cursor]').remove();
+            var $nextCursor = $searchForm.find('input[name=next_cursor]');
+            if (!$nextCursor.length) {
+                $nextCursor = $('<input type="hidden" name="next_cursor" value="' + options.data.nextCursor + '"/>');
+                $searchForm.append($nextCursor);
+            }
             loadDataByAjax.call(this);
         });
 
@@ -77,6 +96,7 @@ function listPage(options) {
     //计算表格高度
     computeTableHeight();
     //初始化表格
+    options.tableData = options.data.tableData;
     $(".table-wrap").wTable(options);
 
     $(window).on('resize', function () {
@@ -85,13 +105,12 @@ function listPage(options) {
     //查询按钮事件
     $submitBtn.not('.disabled').on('click', function (e) {
         $searchForm.find('input[name=current_page]').val(1);
-        $searchForm.find('input[name=pre_cursor]').val(0);
-        $searchForm.find('input[name=next_cursor]').val(0);
-        $searchForm.find('input[name=mark]').val('search');
+        $searchForm.find('input[name=prev_cursor]').remove();
+        $searchForm.find('input[name=next_cursor]').remove();
         loadDataByAjax.call(this)
     });
-    $searchForm.find('input').on('keydown',function(e){
-        if(e.keyCode == 13){
+    $searchForm.find('input').on('keydown', function (e) {
+        if (e.keyCode == 13) {
             $submitBtn.trigger('click');
             return false;
         }
@@ -103,11 +122,13 @@ function listPage(options) {
         var bottomHeight = $('.tool-bar-bottom').outerHeight();
         $tableWrap.height(windowHeight - $tableWrap.offset().top - bottomHeight - 3);
     }
+
     // ajax 载入数据
     function loadDataByAjax(opt) {
         if (!opt) opt = {};
         var formData = $('.search-bar form').serializeArray();
         var $this = $(this);
+        if ($this.hasClass('disabled')) return false;
         $.ajax({
             method: 'GET',
             dataType: 'json',
@@ -121,47 +142,50 @@ function listPage(options) {
             success: function (data, textStatus) {
                 if (opt.success) opt.success(data, textStatus);
                 if (options.paginationType == 'simple') {
-                    $preCursor.val(data.pre_cursor);
-                    $nextCursor.val(data.next_cursor);
-                    var mark = $('input[name=mark]').val();
-                    var $currentPage = $searchForm.find('input[name=current_page]');
-                    var pageNum = $currentPage.val();
-                    if (mark == 'next') {
-                        $currentPage.val(++pageNum);
-                    } else if(mark=='pre') {
-                        $currentPage.val(--pageNum);
+                    options.data.prevCursor = data.prev_cursor;
+                    options.data.nextCursor = data.next_cursor;
+                    if ($searchForm.find('input[name=next_cursor]').length) {
+                        options.data.currentPage++;
+                    } else if ($searchForm.find('input[name=pre_cursor]').length) {
+                        options.data.currentPage--;
+                    } else {
+                        options.data.currentPage = 1;
                     }
                 }
                 if (options.paginationType == 'complex') {
-                    $paginationContainer.wPage('setCurrentPage', data.current_page);
-                    $paginationContainer.wPage('setTotalPage', data.total_page);
+                    options.data.currentPage = data.current_page;
+                    options.data.totalPage = data.total_page;
+                    $paginationContainer.wPage('setCurrentPage', options.data.currentPage);
+                    $paginationContainer.wPage('setTotalPage', options.data.totalPage);
                 }
-                var indexStart = options.pageSize * ($('input[name=current_page]').val() - 1) + 1;
+                $searchForm.find('input[name=current_page]').val(options.data.currentPage);
+                var indexStart = options.data.pageSize * (options.data.currentPage - 1) + 1;
                 $tableWrap.wTable('load', data[options.ajaxDataField], indexStart);
             },
             error: function (XMLHttpRequest, textStatus, errorThrown) {
-                alert(XMLHttpRequest.status+'：'+XMLHttpRequest.statusText);
+                alert(XMLHttpRequest.status + '：' + XMLHttpRequest.statusText);
             },
             complete: function (XMLHttpRequest, textStatus) {
                 $.hidePreloader();
                 $this.removeClass('disabled');
                 if (options.paginationType == 'simple') {
-                    var preCursor = $('input[name=pre_cursor]').val();
-                    var nextCursor = $('input[name=next_cursor]').val();
-                    if (preCursor == 0) {
-                        $preBtn.addClass('disabled');
+                    var $prevCursor = $searchForm.find('input[name=prev_cursor]');
+                    var $nextCursor = $searchForm.find('input[name=next_cursor]');
+                    if ($prevCursor.length && $prevCursor.val()) {
+                        $prevBtn.removeClass('disabled');
                     } else {
-                        $preBtn.removeClass('disabled');
+                        $prevBtn.addClass('disabled');
                     }
-                    if (nextCursor == 0) {
-                        $nextBtn.addClass('disabled');
-                    } else {
+                    if ($nextCursor.length && $nextCursor.val()) {
                         $nextBtn.removeClass('disabled');
+                    } else {
+                        $nextBtn.addClass('disabled');
                     }
                 }
                 if (opt.complete) opt.complete(XMLHttpRequest, textStatus);
             }
         });
     }
+
     return $tableWrap;
 }

@@ -94,7 +94,7 @@
     });
 
     gulp.task('open', function () {
-        return gulp.src('./demo.html').pipe(open({uri: 'http://localhost:3000/demo.html'}));
+        return gulp.src('./demo.html').pipe(open({uri: 'http://localhost:3000/demo-simple-pagination.html'}));
     });
 
     gulp.task('server', ['watch', 'connect', 'open']);

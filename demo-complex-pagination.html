@@ -30,9 +30,6 @@
                 <input id="name" type="text" name="name" class="form-control" placeholder="活动名称">
             </div>
         </div>
-        <!--分页会用到的总页数-->
-        <input name="total_page" type="hidden" value="100"/>
-
         <div id="submit" class="btn btn-primary">查询</div>
     </form>
 </div>
@@ -54,6 +51,16 @@
 <script src="dist/w-modal/dist/js/w-modal.min.js"></script>
 <script src="dist/js/w-list-page.min.js"></script>
 <script>
+    /*
+     传给后天的数据：
+     current_page
+     自定义查询条件
+
+     后台返回数据：
+     current_page
+     total_page
+     table_data
+     * */
     var columns = [//列配置信息
         {
             name: '姓名',
@@ -86,8 +93,42 @@
             }
         }
     ];
-    var tableData = createTableData();
+    var operation = function (rowData, tableData) {
+        //操作列内容，返回往操作列插入的内容
+        var operations = [];
+        operations.push('<button class="btn btn-info btn-xs detail">详情</button>');
+        operations.push('<button class="btn btn-danger btn-xs delete">删除</button>');
+        return operations.join('&nbsp;');
+    };
+    var wt = listPage({
+        url: './test-data.json',
+        showCheckbox: true,//默认true
+        showRowIndex: true,//是否显示行号 默认false
+        operationWidth: 130,
+        primaryKey: 'id',
+        operation: operation,
+        columns: columns,
+        data: {
+            totalPage: 100,
+            currentPage: 2,
+            //pageSize:10, // 每页显示数据量 默认10
+            tableData: createTableData()
+        }
+    });
 
+    $(document).on('click', '.btn.delete', function () {
+        //行内按钮绑定事件，由于可能会用ajax重新载入数据，这里要使用事件委托
+        var $this = $(this);
+        var $row = $this.parents('tr');
+        var rowData = $row.data('rowData');
+        console.log(rowData);
+        wt.wTable('deleteRow', $row);
+    });
+    $(document).on('click', '.btn.detail', function () {
+        var $this = $(this);
+        var rowData = $this.parents('tr').data('rowData');
+        console.log(rowData);
+    });
     function createTableData(index) {
         //构造测试数据
         index = index || 0;
@@ -117,41 +158,6 @@
         var Rand = Math.random();
         return (Min + Math.round(Rand * Range));
     }
-    var operation = function (rowData, tableData) {
-        //操作列内容，返回往操作列插入的内容
-        var operations = [];
-        operations.push('<button class="btn btn-info btn-xs detail">详情</button>');
-        operations.push('<button class="btn btn-danger btn-xs delete">删除</button>');
-        return operations.join('&nbsp;');
-    };
-    $(document).on('click', '.btn.delete', function () {
-        //行内按钮绑定事件，由于可能会用ajax重新载入数据，这里要使用事件委托
-        var $this = $(this);
-        var $row = $this.parents('tr');
-        var rowData = $row.data('rowData');
-        console.log(rowData);
-        wt.wTable('deleteRow', $row);
-    });
-    $(document).on('click', '.btn.detail', function () {
-        var $this = $(this);
-        var rowData = $this.parents('tr').data('rowData');
-        console.log(rowData);
-    });
-
-
-    var wt = listPage({
-        url: './test-data.json',
-        paginationType: 'complex',// simple complex none
-        //totalPage: 100, // 隐藏到页面上
-        showCheckbox: true,//默认true
-        showRowIndex: false,//是否显示行号 默认false
-        //pageSize:10, // 每页显示数据量 默认10
-        operationWidth: 130,
-        primaryKey: 'id',
-        operation: operation,
-        columns: columns,
-        tableData: tableData
-    });
 </script>
 </body>
 </html>
