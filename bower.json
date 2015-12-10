@@ -10,6 +10,9 @@
   ],
   "devDependencies": {
     "bootstrap": "~3.3.6",
-    "jquery": "~2.1.4"
+    "jquery": "~2.1.4",
+    "w-modal": "*",
+    "w-page": "~0.0.2",
+    "w-table": "~0.0.4"
   }
 }
